@@ -1,0 +1,2041 @@
+
+=================================================================================================================================
+                                Boot              [https://opensource.com/article/17/2/linux-boot-and-startup]
+=================================================================================================================================
+
+System StartUP (BIOS)
+    --> Stage1: BootLoader (Master Boot Record)
+            --> Stage2: BootLoader (LILO, GRUB)
+                    --> Kernel (Linux)
+                            --> Init: (User space)
+
+
+
+Master Boot Record:
+    The Master Boot Record (MBR) is a small program that starts when the computer is booting, in order to find the operating system (eg. Windows XP). 
+    This complicated process (called the Boot Process) starts with the POST (Power On Self Test) and ends when the Bios searches for the MBR on the Hard Drive,
+    which is generally located in the first sector, first head, first cylinder (cylinder 0, head 0, sector 1). 
+
+
+The boot sector is really the first stage of the boot loader. T
+here are three boot loaders used by most Linux distributions, GRUB, GRUB2, and LILO. 
+GRUB2 is the newest and is used much more frequently these days than the other older options.
+
+  GRUB2  - "GRand Unified Bootloader, version 2" 
+
+- GRUB can be configured using the /boot/grub/grub.conf file.
+
+- The primary function of either GRUB is to get the Linux kernel loaded into memory and running.
+
+  ***** Stages: ****
+
+
+1.    BIOS POST section, at the end of POST, BIOS searches the attached disks for a boot record, usually located in the Master Boot Record (MBR)
+      It loads the first one it finds into memory and then starts execution of the boot record.
+
+1.5:  Stage 1.5 of GRUB must be located in the space between the boot record itself and the first partition on the disk drive.
+
+      Note that the /boot directory must be located on a filesystem that is supported by GRUB -- Not all filesystems are. 
+      The function of stage 1.5 is to begin execution with the filesystem drivers necessary to locate the stage 2 files in the /boot filesystem and load the needed drivers.
+
+2:    The function of GRUB2 stage 2 is to locate and load a Linux kernel into RAM and turn control of the computer over to the kernel
+      The kernel and its associated files are located in the /boot directory.
+      The kernel files are identifiable as they are all named starting with vmlinuz
+
+      Stage 2 of GRUB2 loads the selected kernel into memory and turns control of the computer over to the kernel.
+
+The startup process:
+
+systemd:  -  is the mother of all processes and it is responsible for bringing the Linux host up to a state in which productive work can be done
+             1. First, systemd mounts the filesystems as defined by /etc/fstab including any swap files or partitions.
+
+=================================================================================================================================
+                                Linux signals
+=================================================================================================================================
+
+On Unix-like operating systems such as Linux, signals are software interrupts. 
+They provide a way for the user (or a process) to directly communicate with a process.
+
+Signal is a notification, a message sent by either operating system or some application to your program (or one of its threads).
+        
+Signals can be sent with the kill command, which is named for its default signal (SIGKILL) 
+that instructs the OS to forcefully terminate a process before doing anything else.
+
+
+Each signal identified by a number, from 1 to 31. Signals don’t carry any argument and their names are mostly self explanatory. 
+For instance SIGKILL or signal number 9 tells the program that someone tries to kill it.
+
+
+Defaul signal: SIGKILL
+
+**** Signals: [id - Signal - Description] ****
+
+2  - SIGINT  - The INT signal is sent to a process by its controlling terminal when a user wants to interrupt the process
+
+3  - SIGQUIT - The QUIT signal is sent to a process by its controlling terminal when the user requests that the process perform a core dump.
+
+6  - SIGABRT - Abort process. ABRT is usually sent by the process itself, when it calls the abort() system call to signal an abnormal termination, 
+               but it can be sent from any process like any other signal. SIGIOT is a synonym for SIGABRT
+
+9  - SIGKILL - Forcefully terminate a process. With STOP, this is one of two signals which cannot be intercepted, ignored, or handled by the process itself
+
+10 - SIGUSR1 - User-defined signal 1. This is one of two signals designated for custom user signal handling.
+
+15 - SIGTERM - The TERM signal is sent to a process to request its termination. 
+               Unlike the KILL signal, it can be caught and interpreted or ignored by the process. 
+               This signal allows the process to perform nice termination releasing resources and saving state if appropriate.
+               It should be noted that SIGINT is nearly identical to SIGTERM.
+
+Ctrl-C --> SIGINT
+Ctrl-Z --> SIGTSTP
+Ctrl-\ --> SIGQUIT
+Ctrl-T --> SIGINFO
+
+Kill three processes: PIDs 123, 456, and 789.
+>  kill 123 456 789
+
+Send signal number 15 (TERM) to processes 1234 and 5678.
+>  kill -15 1234 5678
+
+
+
+
+
+void sig_handler(int signum) {
+    printf("Received signal %d\n", signum);
+}
+
+int main() {
+    signal(SIGINT, sig_handler);
+    sleep(10); // This is your chance to press CTRL-C
+    return 0;
+}
+
+
+=================================================================================================================================
+                                INode
+=================================================================================================================================
+
+
+INode - это структура данных в которой хранится информация о файле или директории в файловой системе. 
+В файловой системе Linux, например Ext4, у файла есть не только само его содержимое, например, тот текст, но и метаданные,
+такие как имя, дата создания, доступа, модификации и права. 
+Вот эти метаданные и хранятся в Inode. У каждого файла есть своя уникальная Inode и именно здесь указано в каких блоках находятся данные файла.
+
+Inodes хранит метаданные для каждого файла в вашей системе в виде таблицы, обычно расположенной в начале раздела.
+Они хранят всю информацию, кроме имени файла и данных.
+Mетаданные содержат всю информацию об указанном файле.
+    Размер.
+    Разрешение.
+    Владелец/группа.
+    Расположение жесткого диска.
+    Дата/время.
+    Любая другая необходимая информация.
+
+
+Каждый файл в данном каталоге является записью с именем файла и номером индекса.
+Вся остальная информация о файле извлекается из таблицы индексов путем ссылки на номер индекса.
+
+Номера inodes уникальны на уровне раздела. Каждый раздел как собственная таблица индексов.
+
+Если у вас закончились inode, вы не можете создавать новые файлы, даже если у вас есть свободное место на данном разделе.
+
+
+Как проверить inode в Linux?
+> ls -li
+
+# найти файл по INode
+> find /home/admin/build/ -inum 3932171
+
+# Total inode count information via the df (Disk Free) command:
+> df -hi
+
+
+Количество inodes каждой файловой системы определяется при создании файловой системы.
+> Большинство настроек по умолчанию при создании файловой системы создает 1 inode на каждые 2 Кбайт пространства
+
+
+========================================================================================================================================
+                                Process group  
+========================================================================================================================================
+
+
+In a POSIX-conformant operating system, a process group denotes a collection of one or more processes.
+Among other things, a process group is used to control the distribution of a signal; when a signal is directed to a process group, 
+the signal is delivered to each process that is a member of the group.[2]
+
+
+========================================================================================================================================
+                                Processes 
+========================================================================================================================================
+
+Process:
+  - In a very basic form, Linux process can be visualized as running instance of a program. 
+    For example, just open a text editor on your Linux box and a text editor process will be born.
+
+  - Processes can talk to other processes using Inter process communication methods and can share data using techniques like shared memory.
+
+Threads:
+  - Threads in Linux are nothing but a flow of execution of the process.
+    A process containing multiple execution flows is known as multi-threaded process.
+
+
+Fork : The fork call is used to  duplicate the current process, the new process  identical in almost every way except that it has its own PID. 
+       The return value of the function  fork distinguishes the two processes, zero is returned in the child and PID of child in parent process.
+
+Exec : The exec call is a way to basically replace the entire current process with a new program.
+       It loads the program into the current process space and runs it from the entry point.
+       As a new process is not created, the process identifier (PID) does not change, but the machine code, data, heap, and stack of the process are replaced by
+        those of the new program.exec() replaces the current process with a the executable pointed by the function. 
+       Control never returns to the original program unless there is an exec() error. exec system call can be executed as execl, execlp, execle, execv, execvp, execvpe
+
+Vfork: The basic difference between vfork and fork is that when a new process is created with vfork(), the parent process is temporarily suspended, 
+       and the child process might borrow the parent's address space. This strange state of affairs continues until the child process either exits, 
+       or calls execve(), at which point the parent process continues.
+
+Clone: Clone, as fork, creates a new process. 
+       Unlike fork, these calls allow the child process to share parts of its execution context with the calling process, such as the memory space, the 
+       table of file descriptors, and the table of signal handlers.
+
+ 
+Process Descriptor and the Task Structure
+1. The kernel stores the list of processes in a circular doubly linked list called the task list.
+2. Process descriptor is nothing but each element of this task list of the type 'struct task_struct', which is defined in <linux/sched.h>. 
+   The process descriptor contains all the information about a specific process.
+3. The task_struct is a relatively large data structure, at around 1.7 kilobytes on a 32-bit machine. 
+
+States:
+1. TASK_INTERRUPTIBLE   - The process is sleeping (that is, it is blocked), waiting for some condition to exist. When this condition exists, 
+                          the kernel sets the process's state to TASK_RUNNING. 
+2. TASK_UNINTERRUPTIBLE - This state is identical to TASK_INTERRUPTIBLE except that it does not wake up and become runnable if it receives a signal. 
+                          This is used in situations where the process must wait without interruption or when the event is expected to occur quite quickly.
+3. TASK_ZOMBIE         
+4. TASK_STOPPED         - Process execution has stopped; the task is not running nor is it eligible to run. 
+5. TASK_RUNNING         - The process is runnable; it is either currently running or on a runqueue waiting 
+
+
+========================================================================================================================================
+                                Информация о пользователе / Авторизация / Истрория:
+========================================================================================================================================
+
+# служит для получения информации о пользователях, которые подключены к системе
+> who
+
+# информация об учетных записях, которые были активны в системе с момента включения компьютера
+> w
+
+# История команд
+> history
+
+# The last command in Linux is used to display the list of all the users logged in and out since the file /var/log/wtmp was created. 
+> last
+
+
+
+=============================================================================================================================================================
+                                                    Interrupt vs Contex switching
+=============================================================================================================================================================
+
+What Is 'Interrupt' Handling?
+
+    An interruption can be described as a message to the processor, indicating an event that needs immediate attention.
+    The cause of the event could range from input/output processes as well as hardware malfunctions or software malfunctions.
+    When an interruption occurs the system stops the current process and begins to execute an enumeration of code, referred to as an interrupt handler or interrupt service routine (ISR).
+
+
+Types of Interrupts
+
+    Interrupts are generally classified into two categories:
+
+    -   Hardware Interrupts are Created by hardware devices outside the PC, like keyboards, mice or network cards. 
+        These interrupts tell your CPU that it can handle information from peripheral devices. 
+        For instance, hitting a button on a keyboard causes an interrupt from the hardware, which tells the CPU to process the input.
+
+    -   Software interrupts The interrupts are generated by software or operating systems to call for services from the system. 
+        For example, dividing the number of zeros in a program could cause a software interruption which alerts the CPU to take care of the situation.
+
+Steps in Interrupt Handling
+
+    -   The Interrupt Signal Detected:
+
+        The CPU detects an interrupt request and determines the priority. 
+        If it is of more important priority than the currently running task, it is processed.
+
+    -   Saving the current state (Context): 
+
+        Before starting an interrupt routine the CPU will save the current state of the task (registers and counters for programs, etc.) in order to ensure it will be able to continue at a later time.
+
+    -   Implementing the Interrupt Service Routine (ISR):
+
+        The CPU shifts to the ISR that contains the code needed to handle the interrupt. 
+        The routine handles the trigger event for the interrupt, for example, the reading of data from a device or addressing an exception.
+
+    -   Restoring the previous state:
+
+        After the ISR is completed it resets its state to that of the program that was stopped. 
+        This makes sure that the program is able to continue to run from the point when it was cut off.
+
+    -   Resuming Normal Execution:
+    
+        This means that the CPU resumes its interrupted process or switches onto the subsequent scheduled task when a context switch takes place.
+
+
+
+What Is 'Context Switching'?
+
+    Context switching is the process of keeping the current state of a running process and then restoring the state of 
+    a different task and allowing an operating system to change between tasks effectively. 
+
+    This allows multitasking by creating the illusion that several tasks are simultaneously running however the CPU can only perform only one task at a given time.
+
+
+When Does Context Switching Occur?
+
+    -   Multitasking/Time-sharing
+
+        In time-sharing systems, each task is allocated a time slice or quantum. 
+        After the time slice is over then the CPU shifts to a different task, making sure that all tasks receive the same amount in processing.
+
+    -   Interrupts:
+
+        If an interrupt occurs, a context switch may be necessary to stop the task in question and deal with the interruption.
+        Once the ISR is finished then the CPU can shift back to the initial task or to another.
+
+    -   Process Ending:
+
+        When a process has finished or abruptly ends it is switched to the next task in the queue.
+
+    -   Priority-based scheduling: 
+
+        If a priority task is ready to be run it is then the operating system makes an event switch that allocates the CPU access to the priority task.
+
+Steps in Context Switching:
+
+    -   Saving the current context: 
+        The current status of the current process is recorded. This includes data in the registers of the CPU, the program counters, the stack’s pointer and any other pertinent data.
+
+    -   Selection of the next task:
+        The scheduler in the operating system selects the next task to be run by utilizing an algorithm for scheduling (e.g. round-robin, priority scheduling etc. ).
+
+    -   Restoring the context of the new task:
+        The context for the following task is retrieved from memory. This is done by loading the process’s saved state, as well as its counter for program and register values.
+
+    -   Resuming execution:
+        The CPU restarts the execution of the new task at the same point from where it stopped for the last time.
+
+
+
+========================================================================================================================================
+                                            Информация | Параметры | OS info
+========================================================================================================================================
+
+# Архитектура:
+
+> arch
+
+# Проверить версию / Build version:
+
+> lsb_release -a
+> lsb_release -r   ' Just version'
+
+# Версия ядра / Kernel version:
+
+> uname -a
+> uname -r          ' Just kernel version'
+> dmesg | grep Linux
+
+# detail about for the kernel image version
+
+    > cat /proc/version 
+
+# узнать какая оболчка сейчас используется:
+
+>  echo $SHELL
+>  echo $0
+>  cat /etc/passwd | grep andtokm
+
+
+# Installed kernels list:
+
+>  dpkg -l | grep linux-image | grep ii
+
+
+# Узнать последнюю актуальную версию ядра: (c /www.kernel.org)
+
+curl -s https://www.kernel.org | grep -A1 latest_link | tail -n1 | egrep -o '>[^<]+' | egrep -o '[^>]+'
+
+
+========================================================================================================================================
+                                            Stack size | Limits - (Ubuntu)
+========================================================================================================================================
+
+> ulimit -a   
+
+        #  core file size          (blocks, -c) 0
+        #  data seg size           (kbytes, -d) unlimited
+        #  scheduling priority             (-e) 0
+        #  file size               (blocks, -f) unlimited
+        #  pending signals                 (-i) 254397
+        #  max locked memory       (kbytes, -l) 65536
+        #  max memory size         (kbytes, -m) unlimited
+        #  open files                      (-n) 1024
+        #  pipe size            (512 bytes, -p) 8
+        #  POSIX message queues     (bytes, -q) 819200
+        #  real-time priority              (-r) 0
+        #  stack size              (kbytes, -s) 8192
+        #  cpu time               (seconds, -t) unlimited
+        #  max user processes              (-u) 254397
+        #  virtual memory          (kbytes, -v) unlimited
+        #  file locks                      (-x) unlimited
+
+========================================================================================================================================
+                                            Caches - (Ubuntu)
+========================================================================================================================================
+
+getconf -a | grep CACHE
+
+        #  LEVEL1_ICACHE_SIZE                 32768
+        #  LEVEL1_ICACHE_ASSOC                8
+        #  LEVEL1_ICACHE_LINESIZE             64
+        #  LEVEL1_DCACHE_SIZE                 32768
+        #  LEVEL1_DCACHE_ASSOC                8
+        #  LEVEL1_DCACHE_LINESIZE             64
+        #  LEVEL2_CACHE_SIZE                  524288
+        #  LEVEL2_CACHE_ASSOC                 8
+        #  LEVEL2_CACHE_LINESIZE              64
+        #  LEVEL3_CACHE_SIZE                  16777216
+        #  LEVEL3_CACHE_ASSOC                 0
+        #  LEVEL3_CACHE_LINESIZE              64
+        #  LEVEL4_CACHE_SIZE                  0
+        #  LEVEL4_CACHE_ASSOC                 0
+        #  LEVEL4_CACHE_LINESIZE              0
+
+========================================================================================================================================
+                                            Информация | CPU Temperature | Battert state | температура процесса | заряд батареи - (Ubuntu)
+========================================================================================================================================
+
+>  upower -e
+
+        #  /org/freedesktop/UPower/devices/line_power_AC0
+        #  /org/freedesktop/UPower/devices/battery_BAT0
+        #  /org/freedesktop/UPower/devices/keyboard_dev_F0_30_FF_F0_30_04
+        #  /org/freedesktop/UPower/devices/mouse_hidpp_battery_0
+        #  /org/freedesktop/UPower/devices/DisplayDevice
+
+>  upower -i /org/freedesktop/UPower/devices/DisplayDevice | grep percentage | grep -o "[0-9]*"         # percentage
+
+>  upower -i /org/freedesktop/UPower/devices/DisplayDevice | grep state | cut -d ':' -f2 | xargs        # State
+
+
+# CPU Temperature | температура процесса 
+
+>  cat /sys/class/thermal/thermal_zone0/temp
+
+
+# Процессы использующие больше RAM
+
+>  ps aux --sort -rss | head
+>  top -c -b -o +%MEM | head -n 20 | tail -15
+
+
+========================================================================================================================================
+                                Hardware / Желело                
+========================================================================================================================================
+
+# How to list disks
+
+> sudo lshw -short -C disk
+
+
+# Lists hardware in a compact format.
+
+> sudo lshw -short
+
+
+# Сетевое железо:
+
+>  sudo lshw -class network
+>  sudo lshw -class network -short
+
+
+#  CPU
+    > lshw -C cpu
+    > lshw -C cpu | grep -i product
+    > lscpu
+    > lscpu | grep -i mhz
+
+# Video & VGA:
+
+    > lspci | grep -i vga
+
+
+# RAM memory:
+
+    > lshw -short -C memory
+
+    > sudo lshw -short
+    > sudo lshw -short | grep memory    # RAM
+
+# List USB devices
+
+    > lsusb
+
+
+# List PCI devices
+
+    > lspci
+
+
+# Display UEFI/BIOS info
+
+    > sudo dmidecode -t bios
+
+========================================================================================================================================
+                                sysctl
+========================================================================================================================================
+
+--> Применяется для просмотра и изменения параметров ядра во время выполнения.
+
+# Чтобы просмотреть все текущие параметры ядра, вызовите команду sysctl с опцией -a:
+> sysctl -a
+
+
+# роверить текущее значение подкачки, вы должны набрать:
+> sysctl vm.swappiness
+
+
+# Использование sysctlдля изменения параметров ядра
+> sysctl -w parameter=value
+
+
+# Например, чтобы включить пересылку пакетов IPv4, вы должны выполнить:
+> sysctl -w net.ipv4.ip_forward=1
+
+
+
+
+# Изменение вступает в силу немедленно, но оно не является постоянным. 
+# После перезагрузки системы загружается значение по умолчанию.
+
+# Для постоянной установки параметра вам необходимо записать настройки в другой конфигурационный файл /etc/sysctl.conf в каталоге /etc/sysctl.d:
+> sysctl -w net.ipv4.ip_forward=1 >> /etc/sysctl.conf
+
+
+# Другой способ изменить параметры – использовать echoкоманду для записи настроек в файлы в каталоге /proc/sys. 
+# Например, вместо запуска команды, приведенной выше, вы можете использовать:
+
+> echo 1 > /proc/sys/net/ipv4/ip_forward
+
+
+========================================================================================================================================
+                                Системные журналы и сообщения ядра: 
+========================================================================================================================================
+
+  - выводит различные информационные сообщения и сообщения об ошибках
+  - Все они выводятся в буфер сообщения ядра, так называемый kernel ring buffer
+
+  > dmesg | tail
+
+  > dmesg -l warn              ---> Или только информационные сообщения:
+
+  > dmesg -l crit,err          ---> только ошибки
+  
+  > dmesg -f user,daemon       ---> отфильтруйте категории user и daemon с помощью опции -f:
+
+  > dmesg -k                   ---> выводить только сообщения от ядра
+
+  > dmesg -w                   ---> выводить только сообщения от ядра (в реальном времени)
+
+  > dmesg -T                   --> выводить полную временную метку
+
+
+▪ Просмотр журнала за определенный период времени
+  > journalctl --since "2020-12-18 06:00:00"
+  > journalctl --since "2020-12-17" --until "2020-12-18 10:00:00"  // Со вчерашнего дня:
+  > journalctl --since yesterday                                   // С определенной даты и по определенное дату и время:
+  > journalctl --since 09:00 --until "1 hour ago"                  // С 9 утра и до момента, час назад:
+
+
+▪ /var/log/syslog   --> содержит глобальный системный журнал, в котором пишутся сообщения с момента запуска системы, от ядра Linux, различных служб,
+
+▪ /var/log/dmesg    --> драйвера устройств. Одноименной командой можно просмотреть вывод содержимого файла
+
+
+========================================================================================================================================
+                                Ip tables
+========================================================================================================================================
+
+Заблокировать все пакеты к 10.62.176.212/32:
+  > sudo iptables -t filter -A INPUT -s 10.62.176.212/32 -j DROP
+
+Вывести все правила в таблице filter:
+
+  > iptables -t filter -L --line-numbers
+
+  > iptables -t filter -L -n -v --line-numbers
+
+Удалить строку 1:
+  > iptables -t filter -D INPUT 1
+  > iptables -t nat -D PREROUTING 1
+
+
+
+iptables -A INPUT -i eth0 -p tcp --dport 80 -j ACCEPT
+iptables -A INPUT -i eth0 -p tcp --dport 443 -j ACCEPT
+iptables -A INPUT -i eth0 -p tcp --dport 8006 -j ACCEPT
+iptables -A INPUT -i eth0 -p tcp --dport 8007 -j ACCEPT
+iptables -A PREROUTING -t nat -i eth0 -p tcp --dport 80 -j REDIRECT --to-port 8006 
+iptables -A PREROUTING -t nat -i eth0 -p tcp --dport 443 -j REDIRECT --to-port 8007  
+iptables -A OUTPUT -t nat -d 127.0.0.1 -p tcp --dport 80 -j REDIRECT --to-ports 8006
+iptables -A OUTPUT -t nat -d 127.0.0.1 -p tcp --dport 443 -j REDIRECT --to-ports 8007 
+
+
+========================================================================================================================================
+                                            Add libs [ldconfig] -- Библиотеки и зависимости
+========================================================================================================================================
+
+
+******** LDD **********
+
+Вывод списка разделяемых библиотек, используемых исполняемыми файлами или разделяемыми библиотеками: 'ldd [options] executable'
+
+> ldd /bin/nano
+> ldd -v /bin/nano
+
+# Know a given executable daemon supports TCP Wrapper
+> sudo ldd /usr/sbin/sshd | grep libwrap
+
+# ldd: 
+-v – Verbose mode, which prints all information.
+-u – Shows unused direct dependencies
+-d – Executes data relocation and shows missing ELF objects.
+-r – executes data and function relocation and shows missing ELF objects and functions.
+
+
+******** ldconfig **********
+
+
+1. install lib (make install ... or something like this)
+2. it should be copied somewhere line  /usr/local/lib
+
+for use libs in C++ aps we can use 
+>   export PATH="$PATH":/usr/local/lib
+
+or add to libs config cache with commands:
+>  ldconfig - p
+
+
+(ldconfig  --> ldconfig creates the necessary links and cache)
+
+
+
+Rebuild Cache
+ldconfig is located at /etc/ld.so.conf which content is like below. 
+We will add the library path with include command. The final content will be like below.
+
+include /etc/ld.so.conf.d/*.conf 
+include /foo
+# Now we will run the ldconfig -p command to read configuration file and rebuild the cache.
+>  ldconfig -p
+
+========================================================================================================================================
+                                            Modules | Kernel | Модули |  Linux Kernel Modules
+========================================================================================================================================
+
+# Linux Kernel Modules are all stored in the /lib/modules 
+
+>  ls -l /lib/modules/
+
+# посмотреть загруженные модули ядра linux:
+
+>  lsmod
+>  cat /proc/modules
+
+
+# Display Information About a Linux Kernel Module with modinfo
+
+>  modinfo nfnetlink
+
+
+
+# Загрузить/ Удаление модуль ядра Linux можно с помощью команд modprobe или insmod
+
+>  sudo modprobe vboxdrv      # Загрузка
+>  sudo modprobe module_name 
+>  sudo modprobe module_name parameter=value   # загрузить модуль с дополнительными параметрами, используйте синтаксис parameter=value :
+
+>  sudo modprobe -r vboxdrv   # Удаление 
+>  sudo modprobe -r module_name   #  modprobe -r  batman-adv 
+
+
+# чтобы убедиться, что модуль загружен:
+
+>  sudo lsmod | grep module_name  # lsmod | grep batman-adv
+
+
+# посмотреть все установленные модули ядра
+
+>  dpkg -S *.ko | grep /lib/modules
+
+# посмотреть все установленные модули ядра
+
+>  modprobe -c
+
+>  find /lib/modules/$(uname -r) -name *.ko
+
+    
+# Блокирование загрузки модулей
+
+# Иногда, во время загрузки системы для используемых нами устройств, загружаются не те модули ядра Linux, они либо не поддерживают нужную функциональность
+# либо конфликтуют с другими модулями. Ярким примером можно назвать загрузку драйвера b43 вместо brcmsmac для беспроводных адаптеров Broadcom. 
+# Чтобы решить эту проблему вы можете добавлять модули в черный список. Для этого достаточно добавить одну строчку в файл /etc/modprobe.d/blacklist.conf:
+
+>  nano /etc/modprobe.d/blacklist.conf 
+>  blacklist b43
+
+
+#  Установка необходимых пакетов для сборки:
+
+>  sudo apt install libncurses-dev libncurses dwarves build-essential gcc bc bison flex libssl-dev libelf-dev
+    
+
+=================================================================================================================================
+                                Troubleshooting: 
+=================================================================================================================================
+
+
+======== uptime ===========
+
+  12:35:19 up 8 min,  1 user,  load average: 0.66, 0.62, 0.35
+
+    12:35:19          - текущее системное время.
+    up 8 min          - это время, в течение которого система работала.
+    1 user        - количество зарегистрированных пользователей.
+    0.66, 0.62, 0.35  - Load agerage: средние значения загрузки системы за последние 1, 5 и 15 минут.
+
+
+======== vmstat =========== 
+
+  [vmstat показывает информацию о процессах, памяти, страницах, I/O, и о работе процессо]
+ 
+  > vmstat -wt
+
+      procs -----------------------memory---------------------- ---swap-- -----io---- -system-- --------cpu--------
+       r  b         swpd         free         buff        cache   si   so    bi    bo   in   cs  us  sy  id  wa  st
+       0  0            0      7634444       981672     12463116    0    0    34    30    7  127   8   1  91   0   0
+
+
+    Procs
+        r: количество запущенных процессов (работающих или ожидающих выполнения).
+        b: количество спящих процессов.
+
+    Memory
+        swpd: объем используемой виртуальной памяти.
+        free: объем свободной памяти.
+        buff: количество памяти, используемой в качестве буферов.
+        cache: объем памяти, используемой в качестве кеша.
+        inact: количество неактивной памяти (опция -a).
+        active: количество активной памяти. (опция -a)
+
+    Swap
+        si: объем памяти, выгруженный с диска (/s).
+        so: объем памяти, перенесенный на диск (/s).
+
+    IO
+        bi: блоки, полученные от блочного устройства (blocks/s).
+        bo: блоки, отправленные на блочное устройство (blocks/s).
+
+    System
+        in: количество прерываний в секунду, включая часы.
+        cs: количество переключений контекста в секунду.
+
+    CPU
+        Здесь проценты от общего времени процессора.
+        us: время, потраченное на запуск кода, не относящегося к ядру (время пользователя).
+        sy: время, потраченное на выполнение кода ядра (системное время).
+        id: время бездействия. До версии Linux 2.5.41 это включает время ожидания ввода-вывода.
+        wa: время, проведенное в ожидании ввода/вывода. До Linux 2.5.41, включено в idle.
+        st: время, украденное из виртуальной машины. До Linux 2.6.11 неизвестно.
+
+
+    > vmstat -D   ----> [отчет об активности диска ]
+
+            21 disks 
+            8 partitions 
+       158637 total reads
+        31589 merged reads
+      7376734 read sectors
+      2099724 milli reading
+       198763 writes
+       553378 merged writes
+     11743120 written sectors
+      6396664 milli writing
+            0 inprogress IO
+         1248 milli spent IO
+
+
+======== dmesg ===========
+
+  - выводит различные информационные сообщения и сообщения об ошибках
+  - Все они выводятся в буфер сообщения ядра, так называемый kernel ring buffer
+
+  > dmesg | tail
+
+  > dmesg -l warn              ---> Или только информационные сообщения:
+
+  > dmesg -l crit,err          ---> только ошибки
+  
+  > dmesg -f user,daemon       ---> отфильтруйте категории user и daemon с помощью опции -f:
+
+  > dmesg -k                   ---> выводить только сообщения от ядра
+
+  > dmesg -w                   ---> выводить только сообщения от ядра (в реальном времени)
+
+  > dmesg -T                   --> выводить полную временную метку
+
+
+======== mpstat ===========
+  
+  - для просмотра подробностей по каждому ядру процессора используйте опцию -P с параметром ALL:
+
+  > mpstat -P ALL
+
+    %CPU - номер ядра процессора;
+    %usr - потребление программами пространства пользователя;
+    %nice - потребление ресурсов в процентах программами в пространстве пользователя с повышенным приоритетом;
+    %sys - потребление ресурсов процессора ядром;
+    %iowait - затраты на ожидание ввода/вывода;
+    %irq - ресурсы, потраченные на прерывания для работы с аппаратным обеспечением;
+    %soft - ресурсы, потраченные на программные прерывания;
+    %steal - украденные процессорные ресурсы, актуально для виртуальных машин;
+    %guest - ресурсы, потраченные на работу виртуального процессора;
+    %idle - неиспользованные ресурсы.
+
+
+======== iostat ===========
+
+  Утилита iostat позволяет проанализировать загруженность системы. 
+  Она выводит основные параметры ввода и вывода данных на диск, скорость записи и чтения данных, а также количество записанных или прочитанных данных. 
+  Кроме того, утилита выводит параметры загруженности процессора. Её можно использовать для оптимизации работы системы.
+
+  -с - отобразить только информацию об использовании процессора;
+  -d - отобразить только информацию об использовании устройств;
+  -h - выводить данные в отчёте в удобном для чтения формате;
+  -k - выводить статистику в килобайтах;dsd
+  -m - выводить статистику в мегабайтах;
+  -o JSON - выводить статистику в формате JSON;
+  -p - вывести статистику по устройству и всех его разделам;
+  -x - вывести расширенную статистику;
+  -y - отображать статистику с момента запуска утилиты, а не системы;
+  -z - спрятать информацию о дисках, у которых нет активности.
+
+
+=============== free ================
+
+  > free -m
+  > cat /proc/meminfo
+
+
+=============== swapon ================
+
+  показывает использование swap-а:
+
+  > swapon -s
+
+
+=================================================================================================================================
+                                lsof [‘LiSt Open Files’]
+=================================================================================================================================
+
+# Эта программа используется чтобы узнать, какие файлы открыты и каким процессом.
+# для просмотра открытых файлов (в Linux всё является файлами)
+
+
+  > lsof -cpython | head -15    ---> увидеть первые 15 файлов, открытых всеми процессами Python, выполняющимися на компьютере.
+
+# Каким процессом занят файл Linux
+
+  > lsof /home/sergiy/трек.mp3
+
+# Например, имеется некоторое количество процессов Python 2.7 и Python 3.6, при этом надо выяснить, 
+# какие файлы открыты процессами, которые не являются процессами Python 2.7. Сделать это можно так:
+
+  > lsof -cpython -c python2.7 | head -10
+
+
+# Опция +d позволяет выяснить, какие папки и файлы открыты в некоей директории (но не в её поддиректориях).
+
+  > lsof +d /usr/bin | head -4
+
+
+# вывести все файлы, открытые процессом с указанным при вызове команды PID. [Поиск по PID]
+
+  > lsof -p 1
+
+
+ # все запущенные процессы на определенном порту,
+
+  > lsof -i TCP:22
+
+
+ # вывод всех запущенных процессов открытых файлов TCP-порт меняется в диапазоне 1-1024.
+
+  > lsof -i TCP:1-1024
+
+
+ # вывод списка всех сетевых подключений
+
+  > lsof -i
+
+
+ # Исключение пользователей с использованием символа «^»
+
+  > lsof -i -u^root
+
+=================================================================================================================================
+                                CPU Usage | использование CPU
+=================================================================================================================================
+
+> cat /proc/loadavg
+
+> grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage "%"}'
+
+
+# Подрбное использовани CPU
+    > mpstat -P ALL 1
+
+=================================================================================================================================
+                                Анализ проблемы - Шаги: 
+=================================================================================================================================
+
+1. Посмотреть что было:
+
+  > w
+  > last
+  > history
+  > uptime
+
+
+2, Посмотреть логи / использование памяти / диска
+
+  > dmesg | tail
+  > vmstat                  <-- память
+  > vmstat - D              <-- диск
+
+
+3. Посмотреть что запущено:
+
+  > ps aux
+  > top
+  > mpstat -P ALL 1         <-- Подрбное использовани CPU
+  > iostat -xz 1            <-- Утилизация дисковой подстистемы
+
+  > netstat -ntlp
+  > netstat -nulp
+  > netstat -nxlp
+
+
+4. Апаратная часть:
+  > lspci                  #  показывает краткий список устройств
+  > lsusb                  #  устройста USB
+  > lscpu                  #  инфа по CPU
+
+
+=================================================================================================================================
+                                Bash scripts
+=================================================================================================================================
+
+# скрипт для удаления всех файлов в текущем каталоге, содержащих слово “linux”
+
+>  for i in *linux*; do rm $i; done
+
+# Что бы выполнять SUDO команды внутри скрикта нужно дать скрипту нужные права
+
+>  chown 755 check_sudo.sh
+
+=================================================================================================================================
+                                Linux Commands
+=================================================================================================================================
+
+# Проверить версию:
+> lsb_release -a
+
+# определите, какую оболочку вы используете?
+> echo $SHELL
+
+
+>  netstat          - display all network connections on a system
+>  ping             - check connection status between source and destination. (ICMP)
+>  /etc/inittab     - used to check the default run level 
+>  wc               - count the number of characters in a file
+>  grep             - global search for a string of characters in a specified file.
+>  env              - print a list of current environmental variables
+>  vmstat           - Report virtual memory statistic
+
+
+=================================================================================================================================
+                                Disks space | File size | Folder size | Рамер папки или файлов
+=================================================================================================================================
+
+# Анализатор дискового пространства.
+
+>   df  -h
+>   duf        # If installed
+
+
+# Анализатор дискового пространства - List files in current folder sorted by size
+
+>   du -sh           - check size of the directory
+>   du -h | sort -h
+>   du -h | sort -hr
+>   du -h --max-depth=1 | sort -hr     (без рекурсии по подкотологам)
+
+# Folder size
+
+>   du -sh <FILE_PATH>
+>   du -sh -- *            (посмотреть размеры файлов в текущем каталоге)
+>   du -h | sort -h
+>   du -h | sort -hr
+>   du -sh * | sort -n
+>   du -sb * | sort -n
+
+
+# Крупные файлы и каталоги
+
+
+>  du -xh /path | sort -h | tail -20
+
+
+=================================================================================================================================
+                                find files | поиск файлов
+=================================================================================================================================
+
+# search a file in Linux by using the command
+
+>  find –iname “filename”
+
+# Поиск файлов
+
+>  find    -name - поиск файлов по имени
+          -perm - поиск файлов в Linux по режиму доступа
+          -user - поиск файлов по владельцу
+          -group - поиск по группе
+          -mtime - поиск по времени модификации файла
+          -atime - поиск файлов по дате последнего чтения
+          -nogroup - поиск файлов, не принадлежащих ни одной группе
+          -nouser - поиск файлов без владельцев
+          -newer - найти файлы новее чем указанный
+          -size - поиск файлов в Linux по их размеру
+      
+
+>  find . -name "*.jpg"                            # Искать файлы по имени в текущей папке
+>  find . -iname "test*"                           # Не учитывать регистр при поиске по имени
+>  find . -not -name "test*"                       # Найти файлы, которые не соответствуют шаблону
+>  find ./test ./test2 -type f -name "*.c"         # Искать в двух каталогах одновременно
+>  find /home -mtime +120                          # найти файлы в каталоге /home, которые были изменены более 120 дней назад?
+>  find /var -atime -90                            # найти файлы в каталоге /var, к которым не обращались в течение последних 90 дней?
+>  find ./ -name "*.c" | xargs grep –i "apple"     # найти расширением “c”, в которых встречается строка “apple”.
+>  find /home/admin/build/ -inum 3932171           # найти файл по INode
+>  find . -type f -mtime -3                        # файлы, претерпевшие изменения за последние трое суток (3*24ч):
+>  find . -type f -ctime +5                        # файлы, созданные пять и более дней назад:
+>  find . -type f -mmin -5                         # файлы изменённые за последние пять минут:
+
+
+# найти файлы/папки ИСКЛЮЧИВ поиск по каталогам 
+
+>  find -name "__pycache__" -not -path "./venv/lib/python3.10/*"
+
+
+# Explain Regular Expressions and Grep
+    ^ -  Match the beginning of the String
+    $ -  Match the end of the String
+    * -  Match zero or more characters
+    ? -  Match exactly one character
+
+> locate   - В отличие от find, команда locate ведёт поиск в базе данных updatedb для шаблонов имён файлов.
+
+
+=============================================================================================================================================================
+                                find files | поиск файлов (2)
+=============================================================================================================================================================   
+
+# Поиск без учёта регистра
+
+>  grep -i "error" sample.txt
+
+
+# Find lines containg 'aaaaa' || 'warning' || 'ccccccccc' in the sample.txt
+
+>  grep -E "aaaaa|warning|ccccccccc" sample.txt
+
+
+# Find lines containg 'aaaaa' || 'warning' || 'ccccccccc' in any file in 'Linux' folder
+
+>  grep -RE "aaaaa|warning|ccccccccc" ./Linux
+
+
+# SKIP all lines containg 'error'
+
+>  grep -w "error" sample.txt
+
+
+
+=================================================================================================================================
+                                Networking
+=================================================================================================================================
+
+# check all the listening ports and services of your machine
+
+>  netstat -ntlp
+
+# To view routing table use:
+
+>  netstat -r
+
+# If you are having network errors and you want to see interface statistics, use netstat -i:
+
+>  netstat -i
+
+# To view TCP/UDP statistics run:
+
+>  netstat -s
+
+# list all the open TCP ports:
+
+>  ss -tnlp
+>  netstat -tnlp
+
+# list ports used by open TCP connections
+
+>  lsof -i -P -sTCP:LISTEN
+
+
+
+#  Traceroute sends 3 UDP packets at a time to an invalid port address on the destination 
+>  traceroute www.google.com
+
+
+# Заблокировать все пакеты к 10.62.176.212/32:
+> iptables -t filter -A INPUT -s 10.62.176.212/32 -j DROP
+
+# Вывести все правила в таблице filter:
+> iptables -t filter --list --line-numbers
+
+# Удалить строку 1:
+> iptables -t filter -D INPUT 1
+> iptables -t nat -D PREROUTING 1
+
+
+# получить информацию о домене необходимо передать имя домена команде.
+> dig google.com
+> nslookup ya.ru
+
+
+# Посмотреть таблицу маршрутизации 
+> route
+    или
+> ip route
+
+# Изменить маршрут по умолчанию достаточно выполнить
+> ip route add default via 192.168.1.1
+
+# Добавить маршрут для любого IP адреса, например, для 243.143.5.25:
+> ip route add 243.143.5.25 via 192.168.1.1
+
+
+=================================================================================================================================
+                                services
+=================================================================================================================================
+
+# Вывод списка запущенных служб
+> service  --status-all
+
+
+# To start a service at boot, use the enable command:
+>  sudo systemctl enable SERVICE_NAME
+
+
+# To disable the service from starting automatically, you can type:
+>  sudo systemctl disable SERVICE_NAME
+
+
+# heck to see if a unit is currently active (running)
+>  systemctl is-active SERVICE_NAME
+
+
+# To see if the unit is enabled, you can use the is-enabled command:
+>  systemctl is-enabled SERVICE_NAME
+
+
+========================================================================================================================================
+                                            Network congifuration | Сетевые настройки
+========================================================================================================================================
+
+▪ # Информация об адаптере сетевом
+
+>  sudo lshw -c network 
+
+>  lspci | grep -i net
+
+
+#  How to Assign a Netmask to Network Interface
+#  Using the “ifconfig” command with the “netmask” argument and interface name as (eth0) allows you to define a netmask to a given interface.
+#  For example, “ifconfig eth0 netmask 255.255.255.224” will set the network mask to a given interface 'eth0'
+
+>  ifconfig eth0 netmask 255.255.255.224
+
+
+#  How to Assign a Broadcast to Network Interface
+#  Using the “broadcast” argument with an interface name will set the broadcast address for the given interface.
+#  For example, the “ifconfig eth0 broadcast 172.16.25.63” command sets the broadcast address to an interface eth0.
+
+>  ifconfig eth0 broadcast 172.16.25.63
+
+
+#  Enable / Disable Promiscuous Mode
+
+>  ifconfig eth0  promisc
+>  ifconfig eth0 -promisc
+
+
+#  Чтобы добавить ip адрес для интерфейса используйте просто укажите его после интерфейса:
+
+>  sudo ifconfig eth0 192.168.1.11
+
+
+
+#  Допустим, мы будем настраивать интерфейс eth0:
+#  Здесь мы используем ip адрес для компьютера 192.168.1.10, сетевую маску 255.255.255.0 и шлюз для выхода в сеть 192.168.1.1.
+#  После этих настроек осталось указать сервер DNS и интернет должен работать.
+
+>  sudo ifconfig eth0 up
+>  sudo ifconfig eth0 add 192.168.1.10
+>  sudo ifconfig eth0 netmask 255.255.255.0
+>  sudo ifconfig eth0 broadcast 192.168.1.255
+>  sudo route add default gw 192.168.1.1
+
+===========================================================================================================
+                                                    Netwotk : Bridges
+===========================================================================================================
+
+# Display Available Ethernet Bridges:
+
+    > brctl show
+
+# Create New ethernet bridges:
+
+    >  brctl addbr dev
+    >  brctl addbr stage
+    >  brctl addbr prod
+
+# Add an Interface to Existing bridge:
+
+    >  brctl addif dev eth0 
+
+    # example will add the ethernet network eth0 to the bridge “dev” that we just created:
+    # 1. This will really make the eth0 as a port of of the bridge “dev”.
+    # 2. So, all the frames that arrives on eth0 will be processed as if it is really arriving at the bridge.
+    # 3. Also, when the frames are sent-out on “dev” bridge, it will use eth0. When multiple interfaces are
+    #    part of “dev” bridge, then eth0 will be a potential candidate to sent-out the outgoing frames from the bridge.
+
+    >  brctl addif dev eth0 eth1     'Add Multiple Interfaces to Existing Bridge'
+    
+
+# MAC address of a Bridge
+
+    >  brctl showmacs prod
+
+========================================================================================================================================
+                                                    Netwotk : Routing
+========================================================================================================================================
+
+# Вот так выглядит таблица маршрутизации linux. 
+
+>  routel
+
+>  ip route
+
+========================================================================================================================================
+                                                    WiFi | Netwotk
+========================================================================================================================================
+
+# List WiFi local/hardware intercases:
+>   sudo lshw -C network                'or'
+>   lspci -nnk | grep -iA2 net
+
+# 'ifconfig' for WiFi:
+>   iwconfig wlp4s0
+
+# find out wifi link quality 
+>   iwconfig wlp4s0 | grep -i --color quality
+
+# 'To list WiFi Networks
+
+>   nmcli connection show
+>   nmcli connection show --active
+>   nmcli connection show "NETWORK_NAME"
+
+# List the AVAILABLE WiFi networks:
+
+>   nmcli d   wifi list
+>   nmcli dev wifi list
+>   nmcli device wifi rescan
+
+# Connect to the access point ‘my_wifi’, you would use the following command:
+
+>   nmcli d wifi connect my_wifi password <password>
+
+# To view detailed information about NETWORK_NAME
+
+>   nmcli -p con show NETWORK_NAME
+
+# Connect & Disconnect (using WiFi Interface name)
+
+>   nmcli d connect    <WifiInterface>
+>   nmcli d disconnect <WifiInterface>
+
+# Connect & Disconnect (using WiFi Saved connection name... WiFi access point name)
+
+>   nmcli c up   <SavedWiFiConn>
+>   nmcli c down <SavedWiFiConn>
+
+# Указать для точки <CONN_NAME> IP4 адрес с маской и GateWay 
+>   sudo nmcli connection modify CONN_NAME ip4 192.168.1.0/24 gw4 192.168.1.6
+
+# Установить для точки <CONN_NAME> статический IP вместо автоматического
+>   sudo nmcli con mod CONN_NAME ipv4.method manual
+
+
+
+# To view the available WiFi hardware/interfaces: (List all network interfaces for wireless hardware.)
+
+>  sudo iw dev
+
+# Выполните следующую команду для вывода полного списка возможностей всех ваших беспроводных интерфейсов:
+#   + software interface modes (can always be added) — программные режимы интерфейсов (всегда могут быть добавлены)
+#   + valid interface combinations — возможные комбинации интерфейсов
+
+>  sudo iw list
+
+# Get interface info: ('wlp4s0' from 'ifconfig')
+
+>  sudo iw dev wlp4s0 info
+
+# check WiFi network connection status
+
+>  sudo iw wlp4s0 link
+
+# check WiFi network connection status
+
+>  sudo iw wlp4s0 link
+
+# Scan for access points reachable via interface 'wlan0'
+
+>  sudo iw wlp4s0 scan
+>  sudo iw wlp4s0 scan | grep SSID
+
+#  Прослушивание событий
+
+>  iw event
+>  iw event -f  # фреймы auth/assoc/deauth/disassoc
+>  iw event -t  # иногда также полезна информация о тайминге:
+
+# Добавим к wlp4s0 интерфейс с именем wlanmon в режиме монитора и установим на нём MAC-адрес:
+
+>  sudo iw wlp4s0 interface add wlp4s0mon type monitor addr 'ca:fe:de:ad:be:ef'
+
+# удалить виртуальный интерфейс
+
+>  sudo iw wlanmon del
+
+
+# перевести существующий беспроводной интерфейс из режима managed в monitor:
+
+>  sudo ip link set <INTERFACE> down
+>  sudo iw <INTERFACE> set monitor control
+>  sudo ip link set <INTERFACE> up
+
+
+**** 'iwlist - Get more detailed wireless information from a wireless interface' ****
+
+
+# To view the available WiFi hardware/interfaces:
+
+>  sudo iwlist wlp4s0 scan | grep ESSID
+
+>  sudo iwlist wlp1s0 scan | egrep 'Cell |ESSID|Encryption|Quality|Last beacon'
+
+
+# Показать количество клиентов зарегистрированых на вашей карте если вы работаете в режиме компьютер – компьютер (peer-to-peer)
+
+>  sudo iwlist wlp4s0 peers
+
+# Получить список доступных каналов и частот доступных устройств
+
+>  sudo iwlist wlp4s0 channel
+
+
+========================================================================================================================================
+                                            nmap
+========================================================================================================================================
+
+# OS discovery:
+
+>  nmap -A 192.168.1.122
+>  nmap -A 192.168.1.0/24
+
+
+# Scan Common Ports on a Single Host
+
+>  nmap 192.168.1.10
+
+# Service Version Detection
+
+>  nmap -sV 192.168.1.10
+
+# List open ports:
+
+>  nmap -p 0-65535    192.168.1.10
+>  nmap -p 0-65535    192.168.1.0/24
+>  nmap -p 25         192.168.1.10
+>  nmap -p 22,80,443  192.168.1.10
+
+
+# Basic Ping Scan (Find Live Hosts) | Useful for quickly identifying devices on a LAN | -sn (ping scan): checks which hosts are up without port scanning.
+
+> nmap -sn 192.168.1.0/24
+
+
+# Stealth SYN Scan (Requires root)
+
+>  sudo nmap -sS 192.168.1.10
+
+
+# Detect Firewalls:
+
+>  sudo nmap -sf -g 25 -oN fw.txt 192.168.1.122
+
+
+# Discover LIVE hosts:
+
+>  nmap -sP 192.168.10.0/24
+
+
+========================================================================================================================================
+                                            USB | Подключени к устройству
+========================================================================================================================================
+
+
+> screen /dev/ttyUSB0
+
+
+========================================================================================================================================
+                                            Stream redirect | перенаправить потоки в файл
+========================================================================================================================================
+
+# Перенаправить stdout и stderr в файл:
+
+./Tests > result.txt 2>&1
+
+
+
+================== Directory and Folders and Files ==============
+
+
+# directory commands:
+>   pwd   -> print working directory
+>   cd    -> for “change directory
+>   ls    -> list
+>   mkdir -> create dir
+>   rmdir -> delete dir
+
+
+# command operators/separators
+>   |   -> pipelines: output (stdout) of one command into the standard input of another one
+>   |&  -> both stdout and stderr of one command into the standard input of another one. Very useful, available in bash version 4 and above.
+
+
+# append one file to another in Linux:
+>   cat file1 > file2
+>   cat file1 > file2 > file3
+
+
+================== Найти подстроки ==============
+
+# найти подстрока в GNU файле file.h и вывести номера строк:
+> cat file.h | grep -n “GNU”
+
+# Как найти разницу в двух файлах?
+> diff file1.txt file2.txt 
+
+================== Найти фалый содержащие строку 'pattern'==================
+
+> grep -rnw '/path/to/somewhere/' -e 'pattern'
+
+  -r or -R is recursive,
+  -n is line number, and
+  -w stands for match the whole word.
+  -l (lower-case L) can be added to just give the file name of matching files.
+  -e is the pattern used during the search
+  
+  
+# This will only search through those files which have .c or .h extensions: 
+> grep --include=\*.{c,h} -rnw '/path/to/somewhere/' -e "pattern"
+
+# найти все файлы содержащие TODO в папке {DesignPatterns/Filter} с типом .cpp или .h:
+> grep --include=\*.{cpp,h} -rnw /home/andtokm/Projects/CppProjects/DesignPatterns/Filter/ -e "TODO"
+
+# This will exclude searching all the files ending with .o extension:
+> grep --exclude=\*.o -rnw '/path/to/somewhere/' -e "pattern"
+
+# This will exclude searching all the files ending with .o extension:
+> grep -Ril "text-to-find-here" /
+
+
+================== Файлы ==============
+
+# Для подсчета всех строк используйте:
+>  wc -l file
+  
+# Для подсчета cтрок в файле example.fa содержащих подстроку 33
+>  grep -o -i 33 example.fa | wc -l
+  
+# Для фильтрации и подсчета только строк с шаблоном
+>  grep -w "pattern" -c file  
+  
+# Для фильтрации и подсчета только строк БЕЗ указанного шаблона:
+>  grep -w "pattern" -c -v file 
+  
+# вывести подстроку из символов [1 - 8] example.fa содержащих подстроку 33
+>  grep  '>' example.fa | cut -b 1-8
+  
+# Вывести только уникальные подстроки [2-8] из файла (содержащих подстроку 33):
+>  grep  '>' example.fa | cut -b 2-8 | sort | uniq  
+
+
+========================================================================================================================================
+                                           SED
+========================================================================================================================================
+
+
+# Find / reple text: 'old' -> 'new'
+
+>  sed 's/old/new/'      file.txt            # только первое вхождение
+>  sed 's/old/new/g'     file.txt            # все
+>  sed '10s/old/new/'    file.txt            # заменить текст в определенной строке, указав номер строки перед опцией s:
+>  sed '10,20s/old/new/' file.txt            # заменить текст в диапазоне строк
+
+# For example, to make two replacements in a single pass, use multiple e flags:
+
+>  sed -i -e 's/apple/orange/g' -e 's/pear/grape/g' file.txt
+>  sed 's/red/blue/g; s/apple/orange/g; /draft/d' data.txt
+
+# remove a line completely
+
+>  sed '3d'    file.txt
+>  sed '5,10d' file.txt          # That clears lines 5 through 10.
+
+# выведем из файла строки с пятой по десятую
+
+>  sed -n '5,10p' /etc/group
+
+#  вывести весь файл, кроме строк с первой по двадцатую:
+
+> sed '1,20d' /etc/group
+
+#  заменить в файле строку cccc на GGGGG и вывести на экран:
+
+> sed 's/cccc/GGGGG/g' TestFile.txt
+
+#  удалим все пустые строки или строки с комментариями из конфига Apache:
+
+> sed '/^#\|^$\| *#/d' /etc/apache2/apache2.conf
+
+# Replacing:
+
+>  sed -i 's/old-text/new-text/g' input.txt
+
+
+# To create a backup of the original file, use -i with a backup suffix:
+
+>  sed -i.bak 's/old/new/g' file.txt
+
+
+========================================================================================================================================
+                                           Процессы
+========================================================================================================================================
+
+
+# 
+>  ps aux | sort -rnk 4 | head -5
+
+
+# Утилита pstree позволяет посмотреть список дочерних процессов для определённого процесса,
+# также их pid-идентификаторы. Например, посмотрим дерево процессов Apache:
+
+>  pstree
+>  pstree -p | grep apache2
+
+# 
+>  ps aux | head -1; ps aux | sort -rnk 4 | head -5
+
+
+================== Память ==============
+
+# Which command is used to check the memory status
+> cat /proc/meminfo
+> vmstat
+> top
+> htop
+
+                    
+# Cвободная память:
+>  free -m
+>  cat /proc/meminfo
+
+
+▪ # Get process ID (exmaple for "java -jar StubServiceEx.jar")
+  > ps -ef | awk '/[S]tub/{print $2}'
+    or
+  > ps -ef | grep Stub | grep -v grep | awk '{print $2}'
+
+
+
+▪ # процессы, использующие максимальное количество памяти/ЦП в Linux.
+
+  > ps -eo pid,ppid,cmd,%mem,%cpu --sort=-%mem | head
+  > ps -eo pid,ppid,cmd,%mem,%cpu --sort=-%cpu | head
+  > ps -eo pid,ppid,user,cmd                             #  просматривать PID, PPID, имя пользователя и команду процесса.
+  
+  
+▪ Выполнение мониторинга процессов в реальном времени с помощью утилиты Watch
+
+  > watch -n 1 'ps -eo pid,ppid,cmd,%mem,%cpu --sort=-%mem | head'
+  
+
+▪ Просмотр журнала за определенный период времени
+
+  > journalctl --since "2020-12-18 06:00:00"
+  > journalctl --since "2020-12-17" --until "2020-12-18 10:00:00"   // Со вчерашнего дня:
+  > journalctl --since yesterday                                   // С определенной даты и по определенное дату и время:
+  > journalctl --since 09:00 --until "1 hour ago"                  // С 9 утра и до момента, час назад:
+  
+  > journalctl -u nginx
+
+▪ Запуск служб:
+
+  > systemctl start ssd
+  > systemctl status ssd
+  > systemctl stop ssd
+  
+============================================================================================================================================================    
+                                                          Linux | System Call
+============================================================================================================================================================
+
+The system call can be regarded as an interface for the interaction between the kernel and the user space program
+It conveys the request of the user process to the kernel, and after the kernel processes the request, it returns the processing result to the user space.
+
+'system call' можно рассматривать как интерфейс для взаимодействия ядра (kernel space) и программы пользовательского пространства (user space.
+Он передает запрос пользовательского процесса ядру, а после того, как ядро обработает запрос, возвращает результат обработки в пользовательское пространство.
+
+
+▪ System Call:
+
+    Calling a system call is ~200 times slower than calling a simple function. 
+    Indeed, a system call is not a simple function call.
+    When you call the function getpid(), you use a wrapper implemented by glibc hiding the actual logic to execute a system call. 
+
+▪ Каждый 'system call' в Linux имеет свой уникальный ID 
+  Каждой конкретной функции сооветствует свой номер
+
+  Где найти #include <syscall.h> -->  /usr/include/x86_64-linux-gnu/sys/syscall.h --> /usr/include/x86_64-linux-gnu/asm/unistd_64.h
+
+  К примеру;
+
+      #define __NR_read 0
+        #define __NR_write 1
+        #define __NR_open 2
+        #define __NR_close 3
+
+
+▪ System call steps:
+
+    -   Step 1: 'Interrupt' implements system call
+                It is an interrupt triggered by a software instruction. 
+                The Linux system kernel responds to software interrupts, switches from user mode to kernel mode, and executes corresponding system calls.
+
+    -   Step 2: 'The library function copies its arguments into registers'
+              It also copies a number identifying the system call into a specific register.
+              The library function then forces the processor to switch from user mode to kernel mode.
+
+    -   Step 3: The kernel executes the system call:
+                    The kernel saves the state of the CPU (the register values).
+                        The kernel checks the validity of the system call number.
+                    The kernel invokes the right system call routine based on this number. 
+                    This routine checks the validity of arguments and executes the logic of the system call.
+                    The kernel restores the state of the CPU and places the return value and the possible error in specific registers.
+
+    -   Step 3: The library function checks for an error and set the global variable errno.
+                      The library returns to the caller.
+
+
+▪ System call table:
+
+    The kernel maintains the system call table, saves the starting address of the system call function, 
+    and the system call number corresponds to the offset of the system call in the call table.
+
+
+=================================================================================================================================
+                                questions: 
+=================================================================================================================================
+
+
+▪ Проверить версию / Build version:
+
+> lsb_release -a
+> lsb_release -r   ' Just version'
+
+
+▪ Версия ядра / Kernel version:
+
+> uname -a
+> uname -r          ' Just kernel version'
+> dmesg | grep Linux
+
+▪ detail about for the kernel image version
+
+> cat /proc/version 
+
+
+
+▪ What are basic elements or components of Linux?
+    - Kernel:         It is considered a core or main part of Linux and is generally responsible for all major activities of 
+                      OS such as process management, device management, etc. 
+
+    - System Library: These are special functions or programs with the help of which application programs or system utilities can access features of the 
+                      kernel without any requirement of code.
+                      It is simply used to implement the functionality of the OS. 
+
+    - System Utility: These are utility programs that are responsible to perform specialized and individual-level tasks. 
+                      They are considered more liable and allow users to manage the computer.  
+
+    - Hardware:       It is physical hardware that includes items such as a mouse, keyboard, display, CPU, etc. 
+
+    - Shell:          It is an environment in which we can run our commands, shell scripts, and programs. 
+                      It is an interface between user and kernel that hides all complexities of functions 
+                      of the kernel from the user. It is used to execute commands. 
+
+▪ What is BASH?
+    - BASH (Bourne Again Shell) is basically a command language interpreter. 
+
+    -  It is the default user shell on most Linux installations.
+       It is basically an interpreted and non-compiled process that can also run in the terminal window. 
+       It is also capable of reading commands from shell scripts.
+
+▪ how to execute more than one command or program from a single command line entry:
+    -  Linux allows for combining several commands in a single line. 
+       Each of the commands is separated by a semicolon:  ';'
+       The execution is carried in the order the commands are specified, from left to right.
+
+▪ how you will run a Linux program in the background together with starting the Linux Server. (use &)
+    -  ./appp_name& 
+
+▪ What is Kernel? Explain its functions:
+
+    - A kernel is considered the main component of Linux OS. 
+      It is simply a resource manager that acts as a bridge between hardware and software.
+      Its main role is to manage hardware resources for users and is generally used to provide an interface for user-level interaction
+
+    - Kernel is the first program that is loaded whenever a computer system starts. It is also referred to as low-level system software.
+
+    - Its other main functions include: 
+        Memory Management
+        Process Management
+        Device Management
+        Storage Management
+        Manage access, and use of various peripherals that are connected to the computer.
+
+▪ What is LILO:
+
+    - LILO (Linux Loader) is basically a bootloader for Linux that is used to load Linux into memory and start the OS. 
+
+▪ What is swap space:
+
+    - Swap space, as the name suggests, is basically a space on a hard disk that is used when the amount of physical memory or RAM is ful
+    - Its main function is to substitute disk space for RAM memory when real RAM does not have enough space to h
+        old all programs that are executing, and more space is required. 
+    - In simple words, it can be used as an extension of RAM by Linux. 
+
+▪ What do you mean by Process States in Linux?
+
+    - New/Ready: In this state, a new process is created and is ready to run.
+    - Running: In this state, the process is being executed.
+    - Blocked/Wait: In this state, the process is waiting for input from the user and if doesnt have resources to run such as memory,
+                    file locks, input, then it can remain in a waiting or blocked state.
+    - Terminated/Completed: In this state, the process has completed the execution or terminated by the OS.
+    - Zombie: In this state, the process is terminated but information regarding the process still exists and is available in the process table.
+
+▪ Name different types of modes used in VI editor.
+
+    - Command Mode/Regular Mode
+    - Insertion Mode/Edit Mode
+    - Ex Mode/Replacement Mode: 
+
+
+▪ What are the hard links?
+    - A hard link is another name for an existing file on Linux. 
+      We can create so many numbers of hard links, for any file. They can create links for other hard link
+
+
+▪ What is a maximum length for a filename under Linux: 255
+
+▪ Under the Linux system, what is the typical size for swap partitions:
+
+    - The typical size for a swap partition under a Linux system should be twice the amount of physical memory or RAM available on the system. 
+
+▪ What are file permissions in Linux? Name different types of file systems in Linux:
+  
+    - Read (r):    It allows the user to open and read the file or list the directory. 
+    - Write (w):   It allows the user to open and modify the file. One can also add new files to the directory. 
+    - Execute (x): It allows the user to execute or run the file.  One can also lookup a specific file within a directory. 
+
+▪ Name the file that is used to automatically mount file systems.
+
+    - File that is used to automatically mount file systems is a 'Fstab' file. 
+
+▪ What is a “/proc” file system
+    - Proc file system is a pseudo or virtual file system that provides an interface to the kernel data structure.
+      It generally includes useful information about processes that are running currently.
+      It can also be used to change some kernel parameters at runtime or during execution.
+      It is also regarded as a control and information center for the kernel. All files under this directory are named virtual files. 
+
+▪ What is the difference between cron and anacron?
+
+    - Cron: It is a program in Linux that is used to execute tasks at a scheduled time. It works effectively on machines that run continuously. 
+
+    - Anacron: It is a program in Linux that is used to execute tasks at certain intervals. It works effectively on machines that are powered off in a day or week. 
+           
+            Cron                                               Anacron
+      It is a daemon.                                     It is not a daemon. 
+      It can be scheduled by any normal user.             It can only be used by super users.
+      It is considered ideal for servers.                 It is considered ideal for desktops and laptops.
+      It expects the system to run 24*7                   It does not expect the system to run 24*7
+      Its minimum granularity is in minutes.              Its minimum granularity is only in days
+      It is used to execute scheduled commands.           It is used to execute commands periodically.
+
+▪ What is first process that is started by the kernel in Linux and what is its process id?
+
+    - The first process started by the kernel in Linux is 'init' and its process id is 1.
+
+▪ What is pipe?
+
+    - In Linux, a pipe is basically a form of redirection that is used to send the output of one command to another command for further processing. 
+      It simply takes the output from one command and uses it as an input for another.
+      It provides asynchronous execution of commands with help of buffered I/O routines. 
+
+
+▪ Explain the redirection operator:
+
+    - ‘>’ overwrites the existing content of the file or creates a new file.
+    - ‘>>’ appends the new content to the end of the file or creates a new file. 
+
+
+**************************** Linux Networking ****************************
+
+
+14.  Why /etc/resolv.conf and /etc/hosts files are used?
+    - /etc/resolv.conf: It is used to configure DNS name servers as it contains the details of the nameserver i.e., details of your DNS server.
+                        The DNS server is then used to resolve the hostname of the IP address. 
+
+    - /etc/hosts: It is used to map or translate any hostname or domain name to its relevant IP address. 
+
+
+15.  What are the advantages of using NIC teaming?
+
+    - NIC (Network Interface Card) teaming has several advantages as given below: 
+      - Load Balancing  
+      - Failover  
+      - Increases uptime
+
+16. What do you mean by Network bonding?
+  
+      - Network Bonding, also known as NIC Teaming, is a type of bonding that is used to connect multiple network interfaces into a single interface. 
+        It usually improves performance and redundancy simply by increasing network throughput and bandwidth.
+
+17. Name default ports used for DNS, SMTP, FTP, SSH, DHCP and squid.
+    
+      DNS   53
+      SMTP  25
+      FTP   20 (Data transfer), 21 (Connection established)
+      SSH   22
+      DHCP  67/UDP (dhcp server), 68/UDP (dhcp client) 
+      squid 3128
+
+17. Name three standard streams in Linux.
+  
+      - Standard Input (stdin)
+      - Standard Output (stdout)
+      - Standard Error (stderr)
+
+
+**************************** Files and Filesystem ****************************
+
+
+# Define the Linux file system hierarchy?
+
+  root  : it is a home directory of superuser (root).
+  etc   : it contains all configuration file and directory used for server Configuration
+  dev   : it contains the device file
+  home  : it is a location of the home directory of regular users
+  proc  : it is a virtual directory.
+  boot  : it contain kernel and boot loader (grub), booting related files.
+  sys   : it is also a virtual directory and contain system information
+  media : it is a mount point of the removable disk like cdrom floppy USB drive etc.
+  tmp   : it contains all temporary file
+  usr   : it is used for software installation
+  lib   : it contains all library files of the system
+  bin   : it contains all executable files or command or user command /usr/bin also contain user command
+  sbin  : it contains all system command or superuser command /usr/sbin
+  mnt   : it is a mount point for partition and external devices.
+  opt   : optional directory and used for third party tool installation.
+  var   : it is a variable directory and contains public data (ftp & www), all log and error Message
+
+
+
+# How to create/make a swap file?
+  First create a file
+  > touch /swap
+
+  Now assign the size of the swap
+  > dd if=/dev/zero of=/swap bs=1M count=200
+
+  Format your swap file
+  > mkswap /swap
+
+  Active the swap file
+  > swapon /swap
+
+  To check active swap partition
+  > Cat /proc/swaps
+
+  For activate automatically swap file, we will make the entry in /etc/rc.local
+  > vim /etc/rc.local
+
+  Make the following entry
+  > Swapon /swap
+
+  Save and exit
+
+
+
+# How to mount CD Rom in Linux?
+
+> mount /dev/cdrom /mnt
+
+  
+# How to mount NFS share in Linux?
+
+> mount –t nfs 10.0.0.1:/nfs /mnt
+  (-t : used for define type of mounting point)
+  (10.0.0.1:/nfs Define here NFS server machine and share data)
+  (/mnt : where you want to access NFS share data you can access in any folder.)
+
+
+========================================================================================================================================
+                        Users | Accounts  | Создать/Удалить пользователя
+========================================================================================================================================
+
+
+# List the fields in /etc/passwd file.
+> ANS : UserName | Password | UserID | GroupID | Comments | HomeDir | LoginShell
+  examples: 
+> redhat:x:500:500:Redhat User:/home/redhat:/bin/bash
+> mssm:x:501:501:another user:/home/mssm:/bin/bash
+
+
+# How to lock an user account?
+> usermod -L mango      <--- To lock account
+> usermod -U mango      <--- To un-lock an account
+
+ (Once an account gets locked, there would be an exclamation mark before the encrypted password files in “/etc/shadow” as shown below:
+ ( mango:!$1$O5zV5Rj/$XhuRe8Og.AiXMXDGSIsae/:16266:0:99999:7::: )
+
+
+
+# How do you make a new user to reset his password:
+> chage -d 0 <USER_NAME>
+
+
+# What are the possible causes when an user failed to login into a Linux system (physical/remote console); 
+# despite providing proper credentials?
+> Account Locked
+> Account Expired
+> Shell Disabled
+> User Restricted.   <---- 'If an user failed to login remotely via ssh then the reasons could be different'
+> Max Logins Set     
+
+
+#  How to manually add user without using “useradd/adduser” or “system-config-user” utilities?
+>  'Create required directory under /home (default home directory for all local users) and set permissions.'
+
+> mkdir /home/user1
+> chmod 700 /home/user1
+
+
+#  ------------------------ Создание ---------------------
+
+# Создать пользователя [1]:
+> sudo adduser <USER_NAME>       # 'Создается пользователь, группа с тем же именем. home каталог пользователя в /home/<USER_NAME>)'
+
+
+# Создать пользователя [1]:
+> sudo useradd -m <USER_NAME>    # 'Создадим пользователя и его домашнюю директорию.'
+> sudo passwd <USER_NAME>        # 'задать для него пароль.'
+
+
+# To add a user to the group you should run (as root):
+> usermod -a -G root <USER_NAME>  
+> sudo adduser <USER_NAME>  sudo
+
+
+#  ------------------------  список пользователей ---------------------
+
+> getent passwd | cut -d: -f1 | sort
+
+> cat /etc/passwd | grep <USER_NAME>
+> cat /etc/passwd
+
+
+#  ------------------------  Группы ---------------------
+
+# список групп:
+
+>  group
+
+>  less /etc/group 
+>  less /etc/group | grep docker 
+
+
+============================================================================================================================================
+                                    socat          
+============================================================================================================================================
+
+Инструмент, который до сих пор поддерживается и имеет весьма обширный функционал по склейке каналов для взаимодействия.
+Разработчиками инструмент именуется как netcat++. Ниже приведем небольшой список того что можно перенаправить через socat:
+
+> socat additionalOptions addr1 addr2
+    
+    - additionalOptions - опции, которые могут добавлять возможности логирования информации, управления направлением передачи данных;
+    - addr1             - источник данных или приемник (влияет использование флага U или u), это может быть сокет, файл, пайп или виртуальный терминал;
+    - addr2             - источник данных или приемник (влияет использование флага U или u), это может быть сокет, файл, пайп или виртуальный терминал;
+
+
+
+# Например, чтобы использовать socat как netcat в качестве TCP сервера, можно запустить вот такую команду:
+
+>  socat TCP-LISTEN:4545, STDOUT
+
+# Для коннекта можно использовать netcat:
+
+>  nc localhost 4545
+

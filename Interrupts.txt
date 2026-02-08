@@ -1,0 +1,99 @@
+• Посмотреть распределение IRQ
+
+>  cat /proc/interrupts
+
+
+• Software interrupts
+
+>  cat /proc/softirqs
+
+
+• найти сетевые IRQ
+
+>  cat /proc/interrupts | grep -E "eth|mlx|ixgbe|ena|nvme"
+
+	# Пример
+	#    48:  120345  0  0  0  IR-PCI-MSI  eth0-TxRx-0
+	#    49:   98321  0  0  0  IR-PCI-MSI  eth0-TxRx-1
+
+
+• pin NIC IRQ на отдельные CPU
+
+>  echo 2 > /proc/irq/48/smp_affinity_list
+>  echo 3 > /proc/irq/49/smp_affinity_list
+
+• проверка
+
+>  cat /proc/irq/48/effective_affinity
+>  cat /proc/irq/48/smp_affinity
+
+====================================================================================
+				 I/O interrupts
+====================================================================================
+
+После hardware interrupt от NVMe:
+
+	IRQ handler (hardirq) --> softirq (BLOCK) --> wake up process waiting for read()
+
+	- выполняется на обычном CPU
+	- может вытеснять user-space
+	- часто исполняется в ksoftirqd/<cpu>
+
+
+
+====================================================================================
+				file I/O interrupts (tuning)
+====================================================================================
+
+--------------найти storage IRQ
+
+>  cat /proc/interrupts | grep -E "nvme|sd"
+
+	# Пример
+    #
+	#	65:  912345  0  0  0 IR-PCI-MSI nvme0q1
+	#	66:  876543  0  0  0 IR-PCI-MSI nvme0q2
+
+-------------- pin NVMe IRQ на выделенные CPU
+
+>  echo 1 > /proc/irq/65/smp_affinity_list
+>  echo 2 > /proc/irq/66/smp_affinity_list
+
+	Проверка:
+
+>  cat /proc/irq/65/effective_affinity
+
+	Золотое правило:
+
+CPU IRQ ≈ CPU, где обрабатывается completion
+
+
+-------------- убрать softirq с CPU приложения
+
+Проверить (Если видишь ksoftirqd/<cpu> на trading CPU — latency spikes гарантированы.)
+
+> top | grep ksoftirqd
+
+
+-------------- включить IO polling (NVMe)
+  		       Позволяет избежать interrupts вообще для read completion.
+
+
+>  cat /sys/block/nvme0n1/queue/io_poll
+>  echo 1 > /sys/block/nvme0n1/queue/io_poll
+
+	Hybrid:                 #    Это самый сильный рычаг для latency.
+ 
+>  echo 1 > /sys/block/nvme0n1/queue/io_poll_delay
+
+
+
+====================================================================================
+				правила
+====================================================================================
+
+1. Interrupts ≠ softirq
+2. Affinity важнее частоты
+3. Меньше wakeups → меньше latency
+4. Pin everything
+5. Measure before tuning

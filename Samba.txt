@@ -1,0 +1,106 @@
+# https://medium.com/tech-learners/how-to-set-up-a-samba-server-in-ubuntu-and-share-files-seamlessly-85cee167bd46
+
+============================================================================================================================================
+                                                Server
+============================================================================================================================================
+
+# Install samba:
+
+💲  sudo apt-get install samba samba-common-bin
+
+# Check version
+
+💲  smbd --version
+
+# Check service status|start|stop
+
+💲  service smbd status
+💲  service nmbd status
+
+# Check 445 port:
+
+💲  netstat -nlp | grep 445
+
+
+# Creating a folder for share
+
+💲  mkdir /home/<username>/dir2mount/
+
+
+# ➡️ Edit Configurations file:
+
+💲 sudo nano /etc/samba/smb.conf
+
+
+# Add this config at the end of the file []
+
+[sambashare]
+    comment = Samba on Ubuntu
+    path = /home/<username>/dir2mount/
+    read only = no
+    browsable = yes
+
+
+# Setting up a user account for Samba
+
+💲 sudo smbpasswd -a <username>  
+
+
+# Restart the service
+
+💲 sudo service smbd restart
+
+
+
+============================================================================================================================================
+                                                Client                # https://manpages.ubuntu.com/manpages/focal/en/man8/mount.cifs.8.html
+============================================================================================================================================
+
+
+# Install:
+
+>  sudo apt-get install cifs-util
+
+
+# command displays the version of cifs mount helper.
+
+>  mount.cifs -V
+
+
+# Create dir to mount to:
+
+>  mkdir /tmp/andtokm_nuc
+
+
+# mount:
+
+>  mount.cifs -v //192.168.101.3/sambashare /tmp/andtokm_nuc -o user=andtokm,password='123!@#QWEqwe'
+
+
+# '192.168.101.3' - IP of server
+# 'sambashare' - share name from '/etc/samba/smb.conf' on server
+
+
+============================================================================================================================================
+                                               umount
+============================================================================================================================================
+
+# Размонтирование сетевого каталога
+
+>  umount -t cifs /tmp/andtokm_nuc
+
+# Если при размонтировании пишет target is busy, что означает - каталог занят, можно выполнить принудительное размонтирование командой
+
+>  umount -t cifs -f /tmp/andtokm_nuc
+
+# Или "ленивое" размонтирование, оно ожидает завершения всех операций с диском, а затем размонтирует каталог, 
+# при этом точка монтирования пропадает из списка примонтированных файловых систем /etc/mtab сразу
+
+>  umount -t cifs -l /tmp/andtokm_nuc
+
+============================================================================================================================================
+                                                Ubuntu GUI
+============================================================================================================================================
+
+smb://192.168.101.3/sambashare 
+

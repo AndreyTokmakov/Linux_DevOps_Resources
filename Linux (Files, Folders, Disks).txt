@@ -1,0 +1,105 @@
+
+=================================================================================================================================
+                                Disks space | File size | Folder size | Рамер папки или файлов
+=================================================================================================================================
+
+# Анализатор дискового пространства.
+
+>   df  -h
+>   duf        # If installed
+
+
+# Анализатор дискового пространства - List files in current folder sorted by size
+
+>   du -sh           - check size of the directory
+>   du -h | sort -h
+>   du -h | sort -hr
+>   du -h --max-depth=1 | sort -hr     (без рекурсии по подкотологам)
+
+# Folder size
+
+>   du -sh <FILE_PATH>
+>   du -sh -- *            (посмотреть размеры файлов в текущем каталоге)
+>   du -h | sort -h
+>   du -h | sort -hr
+>   du -sh * | sort -n
+>   du -sb * | sort -n
+
+
+# Крупные файлы и каталоги - Найти самые «тяжёлые» каталоги
+
+>  du -xh <PATH> | sort -h | tail -20
+>  du -h --max-depth=1 <PATH> | sort -h
+>  du -h --max-depth=1 <PATH> | sort -h | tail -10
+
+=================================================================================================================================
+                                find files | поиск файлов
+=================================================================================================================================
+
+# search a file in Linux by using the command
+
+>  find –iname “filename”
+
+# Поиск файлов
+
+>  find    -name - поиск файлов по имени
+          -perm - поиск файлов в Linux по режиму доступа
+          -user - поиск файлов по владельцу
+          -group - поиск по группе
+          -mtime - поиск по времени модификации файла
+          -atime - поиск файлов по дате последнего чтения
+          -nogroup - поиск файлов, не принадлежащих ни одной группе
+          -nouser - поиск файлов без владельцев
+          -newer - найти файлы новее чем указанный
+          -size - поиск файлов в Linux по их размеру
+      
+
+>  find . -name "*.jpg"                            # Искать файлы по имени в текущей папке
+>  find . -iname "test*"                           # Не учитывать регистр при поиске по имени
+>  find . -not -name "test*"                       # Найти файлы, которые не соответствуют шаблону
+>  find ./test ./test2 -type f -name "*.c"         # Искать в двух каталогах одновременно
+>  find /home -mtime +120                          # найти файлы в каталоге /home, которые были изменены более 120 дней назад?
+>  find /var -atime -90                            # найти файлы в каталоге /var, к которым не обращались в течение последних 90 дней?
+>  find ./ -name "*.c" | xargs grep –i "apple"     # найти расширением “c”, в которых встречается строка “apple”.
+>  find /home/admin/build/ -inum 3932171           # найти файл по INode
+>  find . -type f -mtime -3                        # файлы, претерпевшие изменения за последние трое суток (3*24ч):
+>  find . -type f -ctime +5                        # файлы, созданные пять и более дней назад:
+>  find . -type f -mmin -5                         # файлы изменённые за последние пять минут:
+
+
+# найти файлы/папки ИСКЛЮЧИВ поиск по каталогам 
+
+>  find -name "__pycache__" -not -path "./venv/lib/python3.10/*"
+
+
+# Explain Regular Expressions and Grep
+    ^ -  Match the beginning of the String
+    $ -  Match the end of the String
+    * -  Match zero or more characters
+    ? -  Match exactly one character
+
+> locate   - В отличие от find, команда locate ведёт поиск в базе данных updatedb для шаблонов имён файлов.
+
+
+=============================================================================================================================================================
+                                find files | поиск файлов (2)
+=============================================================================================================================================================   
+
+# Поиск без учёта регистра
+
+>  grep -i "error" sample.txt
+
+
+# Find lines containg 'aaaaa' || 'warning' || 'ccccccccc' in the sample.txt
+
+>  grep -E "aaaaa|warning|ccccccccc" sample.txt
+
+
+# Find lines containg 'aaaaa' || 'warning' || 'ccccccccc' in any file in 'Linux' folder
+
+>  grep -RE "aaaaa|warning|ccccccccc" ./Linux
+
+
+# SKIP all lines containg 'error'
+
+>  grep -w "error" sample.txt

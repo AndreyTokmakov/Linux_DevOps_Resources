@@ -1,0 +1,35 @@
+=================================================================================================================================
+                                modinfo chardev.ko
+=================================================================================================================================
+
+filename:       /home/andtokm/DiskS/ProjectsUbuntu/CppMakeProject/LinuxModules/chardev.ko
+license:        GPL
+description:    Hello world driver
+author:         Andrei Tokmakov
+srcversion:     4276224FEF081F5120DDBF1
+depends:        
+retpoline:      Y
+name:           chardev
+vermagic:       5.15.0-76-generic SMP mod_unload modversions 
+
+
+=================================================================================================================================
+
+=================================================================================================================================
+
+# На этом этапе команда:
+
+    sudo lsmod | grep chardev
+
+# Загрузить модуль:
+
+    sudo insmod chardev.ko
+
+#   
+    sudo lsmod | grep chardev
+
+    #  chardev                16384  0
+    
+# Удалить модуль:
+
+    sudo rmmod chardev
