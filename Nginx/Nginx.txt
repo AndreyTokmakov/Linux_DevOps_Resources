@@ -1,0 +1,76 @@
+
+sudo apt install nginx apache2-utils
+
+service nginx start | stop | status
+
+
+
+
+=============================================================================================================================
+#			How to Set Up Basic HTTP Authentication on NGINX
+#			https://www.webhi.com/how-to/how-to-set-up-basic-http-authentication-on-nginx/
+=============================================================================================================================
+
+# Create an Authentication File
+# We will start by creating an authentication file.\
+# This file will contain the username and password combinations that will be used for authentication.
+# First, create an authentication file with the username and password combinations.
+# Replace username with the username you want to use and password with the corresponding password:
+
+> sudo htpasswd -c /etc/nginx/.htpasswd admin
+
+
+
+# Step 2: Configure NGINX
+
+> sudo nano /etc/nginx/sites-available/default
+
+# and add section
+
+
+		location / {
+		        try_files $uri $uri/ =404;
+		        auth_basic "Restricted Content";
+		        auth_basic_user_file /etc/nginx/.htpasswd;
+		}
+
+
+# Test the Configuration
+# Now that we have configured NGINX to use basic HTTP authentication, we can test the configuration.
+# First, verify that there are no syntax errors in the configuration file:
+
+> sudo nginx -t
+
+
+
+
+=============================================================================================================================
+#			Закрытие сервиса с помощью Nginx
+=============================================================================================================================
+
+1. запускаем сервис на localhost:8080
+
+
+2. Добвляем конфигурацию в '/etc/nginx/sites-available/default' c 'proxy_pass http://localhost:8080'
+
+	server {
+		listen 52525 default_server;
+		listen [::]:52525 default_server;
+
+		root /var/www/html;
+
+		# Add index.php to the list if you are using PHP
+		index index.html index.htm index.nginx-debian.html;
+
+		server_name _;
+
+		location / {
+			# First attempt to serve request as file, then as directory, then fall back to displaying a 404.
+			try_files $uri $uri/ =404;
+			auth_basic "Restricted Content";
+		    auth_basic_user_file /etc/nginx/.htpasswd;
+
+		    proxy_pass http://localhost:8080;
+		}
+
+	}
